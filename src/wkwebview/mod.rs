@@ -17,7 +17,7 @@ use cocoa::{
   base::{id, nil, NO, YES},
   foundation::{NSDictionary, NSFastEnumeration, NSInteger},
 };
-// use objc2::class;
+
 use dpi::{LogicalPosition, LogicalSize};
 use icrate::{AppKit::NSEvent, WebKit::WKWebView};
 use objc2::{runtime::AnyObject, ClassType};
@@ -361,14 +361,6 @@ impl InnerWebView {
               key_equivalent as extern "C" fn(_, _, _) -> objc2::runtime::Bool,
             );
 
-            extern "C" fn key_equivalent(
-              _this: &mut AnyObject,
-              _sel: objc2::runtime::Sel,
-              _event: &NSEvent,
-            ) -> objc2::runtime::Bool {
-              objc2::runtime::Bool::NO
-            }
-
             extern "C" fn accept_first_mouse(
               this: &AnyObject,
               _sel: objc2::runtime::Sel,
@@ -382,6 +374,14 @@ impl InnerWebView {
                   objc2::runtime::Bool::NO
                 }
               }
+            }
+
+            extern "C" fn key_equivalent(
+              _this: &mut AnyObject,
+              _sel: objc2::runtime::Sel,
+              _event: &NSEvent,
+            ) -> objc2::runtime::Bool {
+              objc2::runtime::Bool::NO
             }
           }
           decl.register()

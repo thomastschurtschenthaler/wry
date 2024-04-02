@@ -82,9 +82,8 @@ pub(crate) unsafe fn set_drag_drop_handler(
     .class()
     .instance_variable(DRAG_DROP_HANDLER_IVAR)
     .unwrap();
-  let mut r = ivar.load_mut::<*mut c_void>(webview.as_mut().unwrap());
-  r.replace(*(listener as *mut c_void));
-  // (*webview).set_ivar(DRAG_DROP_HANDLER_IVAR, listener as *mut _ as *mut c_void);
+  let ivar_handler = ivar.load_mut::<*mut c_void>(webview.as_mut().unwrap());
+  *ivar_handler = listener as *mut c_void;
   listener
 }
 
@@ -98,14 +97,13 @@ unsafe fn collect_paths(drag_info: &ProtocolObject<dyn NSDraggingInfo>) -> Vec<P
   let pb = drag_info.draggingPasteboard();
   let mut drag_drop_paths = Vec::new();
   let types = NSArray::arrayWithObject(NSFilenamesPboardType);
+
   if pb.availableTypeFromArray(&types).is_some() {
-    for path in pb.propertyListForType(NSFilenamesPboardType).iter() {
-      let path = Id::<AnyObject>::cast(*path) as Id<NSString>;
-      drag_drop_paths.push(PathBuf::from(
-        CStr::from_ptr(NSString::UTF8String(&path))
-          .to_string_lossy()
-          .into_owned(),
-      ));
+    let paths = pb.propertyListForType(NSFilenamesPboardType).unwrap();
+    let paths: Id<NSArray<NSString>> = Id::<AnyObject>::cast(paths.clone());
+    for path in paths {
+      let path = CStr::from_ptr(path.UTF8String()).to_string_lossy();
+      drag_drop_paths.push(PathBuf::from(path.into_owned()));
     }
   }
   drag_drop_paths
@@ -117,7 +115,7 @@ extern "C" fn dragging_updated(
   drag_info: &ProtocolObject<dyn NSDraggingInfo>,
 ) -> NSDragOperation {
   let dl: NSPoint = unsafe { drag_info.draggingLocation() };
-  let frame: NSRect = unsafe { this.frame() };
+  let frame: NSRect = this.frame();
   let position = (dl.x as i32, (frame.size.height - dl.y) as i32);
   let listener = unsafe { get_handler(this) };
   if !listener(DragDropEvent::Over { position }) {
@@ -145,7 +143,7 @@ extern "C" fn dragging_entered(
   let paths = unsafe { collect_paths(drag_info) };
 
   let dl: NSPoint = unsafe { drag_info.draggingLocation() };
-  let frame: NSRect = unsafe { this.frame() };
+  let frame: NSRect = this.frame();
   let position = (dl.x as i32, (frame.size.height - dl.y) as i32);
 
   if !listener(DragDropEvent::Enter { paths, position }) {
@@ -165,7 +163,7 @@ extern "C" fn perform_drag_operation(
   let paths = unsafe { collect_paths(drag_info) };
 
   let dl: NSPoint = unsafe { drag_info.draggingLocation() };
-  let frame: NSRect = unsafe { this.frame() };
+  let frame: NSRect = this.frame();
   let position = (dl.x as i32, (frame.size.height - dl.y) as i32);
 
   if !listener(DragDropEvent::Drop { paths, position }) {

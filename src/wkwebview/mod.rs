@@ -19,6 +19,8 @@ use cocoa::{
 };
 // use objc2::class;
 use dpi::{LogicalPosition, LogicalSize};
+use icrate::{AppKit::NSEvent, WebKit::WKWebView};
+use objc2::{runtime::AnyObject, ClassType};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use std::{
@@ -341,43 +343,54 @@ impl InnerWebView {
 
       // WebView and manager
       let manager: id = msg_send![config, userContentController];
-      let cls = match objc::declare::ClassDecl::new("WryWebView", class!(WKWebView)) {
+      let cls = match objc2::declare::ClassBuilder::new("WryWebView", WKWebView::class()) {
         #[allow(unused_mut)]
         Some(mut decl) => {
+          dbg!("create");
           #[cfg(target_os = "macos")]
           {
             add_drag_drop_methods(&mut decl);
-            synthetic_mouse_events::setup(&mut decl);
-            decl.add_ivar::<bool>(ACCEPT_FIRST_MOUSE);
+            // synthetic_mouse_events::setup(&mut decl); // TODO: [objc2] migrate to objc2
+            decl.add_ivar::<objc2::runtime::Bool>(ACCEPT_FIRST_MOUSE);
             decl.add_method(
-              sel!(acceptsFirstMouse:),
-              accept_first_mouse as extern "C" fn(&Object, Sel, id) -> BOOL,
+              objc2::sel!(acceptsFirstMouse:),
+              accept_first_mouse as extern "C" fn(_, _, _) -> objc2::runtime::Bool,
             );
             decl.add_method(
-              sel!(performKeyEquivalent:),
-              key_equivalent as extern "C" fn(&mut Object, Sel, id) -> BOOL,
+              objc2::sel!(performKeyEquivalent:),
+              key_equivalent as extern "C" fn(_, _, _) -> objc2::runtime::Bool,
             );
 
-            extern "C" fn key_equivalent(_this: &mut Object, _sel: Sel, _event: id) -> BOOL {
-              NO
+            extern "C" fn key_equivalent(
+              _this: &mut AnyObject,
+              _sel: objc2::runtime::Sel,
+              _event: &NSEvent,
+            ) -> objc2::runtime::Bool {
+              objc2::runtime::Bool::NO
             }
 
-            extern "C" fn accept_first_mouse(this: &Object, _sel: Sel, _event: id) -> BOOL {
+            extern "C" fn accept_first_mouse(
+              this: &AnyObject,
+              _sel: objc2::runtime::Sel,
+              _event: &NSEvent,
+            ) -> objc2::runtime::Bool {
               unsafe {
-                let accept: bool = *this.get_ivar(ACCEPT_FIRST_MOUSE);
-                if accept {
-                  YES
+                let accept = *this.get_ivar::<objc2::runtime::Bool>(ACCEPT_FIRST_MOUSE);
+                if accept.as_bool() {
+                  objc2::runtime::Bool::YES
                 } else {
-                  NO
+                  objc2::runtime::Bool::NO
                 }
               }
             }
           }
           decl.register()
         }
-        _ => class!(WryWebView),
+        _ => objc2::class!(WryWebView),
       };
-      let webview: id = msg_send![cls, alloc];
+
+      let webview: *mut AnyObject = objc2::msg_send![cls, alloc]; // FIXME: [objc2]
+      let webview = webview as *mut _ as *mut Object; // FIXME: [objc2]
 
       let () = msg_send![config, setWebsiteDataStore: data_store];
       let _preference: id = msg_send![config, preferences];
@@ -843,9 +856,15 @@ impl InnerWebView {
       #[cfg(target_os = "macos")]
       let drag_drop_ptr = match attributes.drag_drop_handler {
         // if we have a drag_drop_handler defined, use the defined handler
-        Some(drag_drop_handler) => set_drag_drop_handler(webview, drag_drop_handler),
+        Some(drag_drop_handler) => {
+          let webview = webview as *mut _ as *mut AnyObject; // FIXME: [objc2]
+          set_drag_drop_handler(webview, drag_drop_handler)
+        }
         // prevent panic by using a blank handler
-        None => set_drag_drop_handler(webview, Box::new(|_| false)),
+        None => {
+          let webview = webview as *mut _ as *mut AnyObject; // FIXME: [objc2]
+          set_drag_drop_handler(webview, Box::new(|_| false))
+        }
       };
 
       // ns window is required for the print operation

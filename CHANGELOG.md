@@ -1,5 +1,9 @@
 # Changelog
 
+## \[0.39.1]
+
+- [`ed9fa9b`](https://github.com/tauri-apps/wry/commit/ed9fa9b3950206548cdaf0bcdb6c2d5fb72619b3)([#1210](https://github.com/tauri-apps/wry/pull/1210)) On iOS, allows media plays inline.
+
 ## \[0.39.0]
 
 - [`ddda455`](https://github.com/tauri-apps/wry/commit/ddda4556b36a41b1c6f3f4d200eb16612d5f3f12)([#1207](https://github.com/tauri-apps/wry/pull/1207)) Disable deprecated applicationCache web api. This api was completely removed upstream in webkitgtk 2.44.

@@ -186,7 +186,7 @@ extern "C" fn dragging_exited(
   }
 }
 
-pub(crate) unsafe fn add_drag_drop_methods(decl: &mut ClassBuilder) {
+pub(crate) unsafe fn setup(decl: &mut ClassBuilder) {
   decl.add_ivar::<*mut c_void>(DRAG_DROP_HANDLER_IVAR);
 
   decl.add_method(

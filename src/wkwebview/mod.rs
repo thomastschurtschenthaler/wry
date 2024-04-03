@@ -40,7 +40,7 @@ use objc::{
 use objc_id::Id;
 
 #[cfg(target_os = "macos")]
-use drag_drop::{add_drag_drop_methods, set_drag_drop_handler};
+use drag_drop::set_drag_drop_handler;
 
 #[cfg(feature = "mac-proxy")]
 use crate::{
@@ -346,11 +346,10 @@ impl InnerWebView {
       let cls = match objc2::declare::ClassBuilder::new("WryWebView", WKWebView::class()) {
         #[allow(unused_mut)]
         Some(mut decl) => {
-          dbg!("create");
           #[cfg(target_os = "macos")]
           {
-            add_drag_drop_methods(&mut decl);
-            // synthetic_mouse_events::setup(&mut decl); // TODO: [objc2] migrate to objc2
+            drag_drop::setup(&mut decl);
+            synthetic_mouse_events::setup(&mut decl);
             decl.add_ivar::<objc2::runtime::Bool>(ACCEPT_FIRST_MOUSE);
             decl.add_method(
               objc2::sel!(acceptsFirstMouse:),

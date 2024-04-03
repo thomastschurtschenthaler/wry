@@ -8,7 +8,7 @@ use icrate::{
 };
 use objc2::{declare::ClassBuilder, runtime::Sel};
 
-pub unsafe fn setup(decl: &mut ClassBuilder) {
+pub unsafe fn add_synthetic_mouse_events_methods(decl: &mut ClassBuilder) {
   decl.add_method(
     objc2::sel!(otherMouseDown:),
     other_mouse_down as extern "C" fn(_, _, _),

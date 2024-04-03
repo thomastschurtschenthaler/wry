@@ -40,7 +40,10 @@ use objc::{
 use objc_id::Id;
 
 #[cfg(target_os = "macos")]
-use drag_drop::set_drag_drop_handler;
+use drag_drop::{add_drag_drop_methods, set_drag_drop_handler};
+
+#[cfg(target_os = "macos")]
+use synthetic_mouse_events::add_synthetic_mouse_events_methods;
 
 #[cfg(feature = "mac-proxy")]
 use crate::{
@@ -348,8 +351,8 @@ impl InnerWebView {
         Some(mut decl) => {
           #[cfg(target_os = "macos")]
           {
-            drag_drop::setup(&mut decl);
-            synthetic_mouse_events::setup(&mut decl);
+            add_drag_drop_methods(&mut decl);
+            add_synthetic_mouse_events_methods(&mut decl);
             decl.add_ivar::<objc2::runtime::Bool>(ACCEPT_FIRST_MOUSE);
             decl.add_method(
               objc2::sel!(acceptsFirstMouse:),

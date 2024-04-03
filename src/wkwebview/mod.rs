@@ -20,7 +20,11 @@ use cocoa::{
 
 use dpi::{LogicalPosition, LogicalSize};
 use icrate::{AppKit::NSEvent, WebKit::WKWebView};
-use objc2::{runtime::AnyObject, ClassType};
+use objc2::{
+  declare::ClassBuilder,
+  runtime::{AnyObject, NSObject},
+  ClassType,
+};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use std::{
@@ -685,7 +689,7 @@ impl InnerWebView {
             sel!(webView:decidePolicyForNavigationResponse:decisionHandler:),
             navigation_policy_response as extern "C" fn(&Object, Sel, id, id, id),
           );
-          add_download_methods(&mut cls);
+          // add_download_methods(&mut cls); // FIXME: [objc2]
           add_navigation_mathods(&mut cls);
           cls.register()
         }
@@ -739,28 +743,28 @@ impl InnerWebView {
         let download_delegate = if attributes.download_started_handler.is_some()
           || attributes.download_completed_handler.is_some()
         {
-          let cls = match ClassDecl::new("WryDownloadDelegate", class!(NSObject)) {
+          let cls = match ClassBuilder::new("WryDownloadDelegate", NSObject::class()) {
             Some(mut cls) => {
               cls.add_ivar::<*mut c_void>("started");
               cls.add_ivar::<*mut c_void>("completed");
               cls.add_method(
-                sel!(download:decideDestinationUsingResponse:suggestedFilename:completionHandler:),
-                download_policy as extern "C" fn(&Object, Sel, id, id, id, id),
+                objc2::sel!(download:decideDestinationUsingResponse:suggestedFilename:completionHandler:),
+                download_policy as extern "C" fn(_, _, _, _, _, _),
               );
               cls.add_method(
-                sel!(downloadDidFinish:),
-                download_did_finish as extern "C" fn(&Object, Sel, id),
+                objc2::sel!(downloadDidFinish:),
+                download_did_finish as extern "C" fn(_, _, _),
               );
               cls.add_method(
-                sel!(download:didFailWithError:resumeData:),
-                download_did_fail as extern "C" fn(&Object, Sel, id, id, id),
+                objc2::sel!(download:didFailWithError:resumeData:),
+                download_did_fail as extern "C" fn(_, _, _, _, _),
               );
               cls.register()
             }
-            None => class!(WryDownloadDelegate),
+            None => objc2::class!(WryDownloadDelegate),
           };
 
-          let download_delegate: id = msg_send![cls, new];
+          let download_delegate: *mut AnyObject = objc2::msg_send![cls, new];
           if let Some(download_started_handler) = attributes.download_started_handler {
             let download_started_ptr = Box::into_raw(Box::new(download_started_handler));
             (*download_delegate).set_ivar("started", download_started_ptr as *mut _ as *mut c_void);
